@@ -1,0 +1,72 @@
+@import "tailwindcss";
+/* Image curve logic */
+/* Card Container needs to be relative */
+.input {
+  @apply w-full p-3 rounded border border-gray-300 focus:outline-none focus:border-[#206f53];
+}
+
+.group {
+  position: relative;
+}
+
+/* Overlay Styling */
+.card__overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;      
+  background-color: #fff;      
+  /* Default state: hidden or shifted down */
+  transform: translateY(calc(100% - 100px)); 
+  transition: .3s ease-in-out;
+  border-radius: 40px 0 0 0;
+}
+
+/* Reveal full overlay on card hover */
+.group:hover .card__overlay {
+  transform: translateY(0);
+}
+
+.card__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1.5em;
+  padding: 1.5em;
+  border-radius: 40px 0 0 0;    
+  background-color: #fff;
+}
+
+/* SVG Arc Positioning */
+.card__arc {
+  width: 80px;
+  height: 80px;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  z-index: 1;
+}
+
+.card__arc path {
+  fill: #fff;
+}
+
+.card__description {
+  padding: 0 2em 2em;
+  margin: 0;
+  color: #d7bdca;
+  text-align: right;
+}
+
+.custom-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: white;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%236b7280' height='20' viewBox='0 0 20 20' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M5.25 7.5L10 12.25L14.75 7.5' stroke='%236b7280' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px; /* space for arrow */
+}
