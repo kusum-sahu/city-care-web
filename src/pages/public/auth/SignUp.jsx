@@ -1,59 +1,26 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
-
-const districts = [
-  "Angul", "Boudh", "Bhadrak", "Bolangir", "Bargarh", "Balasore",
-  "Cuttack", "Debagarh", "Dhenkanal", "Ganjam", "Gajapati",
-  "Jharsuguda", "Jajpur", "Jagatsinghpur", "Khordha", "Keonjhar",
-  "Kalahandi", "Kandhamal", "Koraput", "Kendrapara", "Malkangiri",
-  "Mayurbhanj", "Nabarangpur", "Nuapada", "Nayagarh", "Puri", "Rayagada"
-];
 
 const Signup = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [autoDistrict, setAutoDistrict] = useState("");
-  useEffect(() => {
-    if (!navigator.geolocation) return;
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+    password: "",
+    confirmPassword: "",
+    address: "",
+    city: "",
+    pincode: "",
+  });
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await res.json();
-
-          const rawDistrict =
-            data.address.county ||
-            data.address.state_district ||
-            data.address.city ||
-            "";
-
-          const cleanedDistrict = rawDistrict
-            .replace(" District", "")
-            .replace(" district", "")
-            .trim();
-
-          if (districts.includes(cleanedDistrict)) {
-            setAutoDistrict(cleanedDistrict);
-          }
-        } catch (err) {
-          console.log("District fetch failed");
-        }
-      },
-      () => console.log("Location denied")
-    );
-  }, []);
-
-
-  // 🔑 SIGNUP TYPE FROM URL
   const pathname = location.pathname;
-
   const signupType =
     pathname === "/signup/b2b"
       ? "B2B"
@@ -61,66 +28,138 @@ const Signup = () => {
         ? "B2C"
         : "NORMAL";
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  const form = e.target;
-
-  const payload = {
-    name: form.name.value,
-    mobile: form.mobile.value,
-    email: form.email.value,
-    password: form.password.value,
-    role_id: form.role_id.value,
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
-  try {
-    const response = await fetch("http://localhost:5000/api/auth/signup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  const validate = () => {
+    const newErrors = {};
 
-    const data = await response.json();
-
-    if (response.ok) {
-      toast.success("Account created successfully 🎉");
-
-      form.reset(); // ✅ Clear form fields
-    } else {
-      toast.error(data.message || "Registration failed");
+    if (!formData.name.trim()) {
+      newErrors.name = "Full name is required";
     }
-  } catch (error) {
-    toast.error("Server error");
-  }
-};
 
-setTimeout(() => {
-  navigate("/login");
-}, 2000);
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email format";
+    }
+
+    if (!formData.mobile.trim()) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (!/^[6-9]\d{9}$/.test(formData.mobile.replace(/\D/g, ""))) {
+      newErrors.mobile = "Enter valid 10-digit mobile number";
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
+    }
+
+    if (!formData.city.trim()) {
+      newErrors.city = "City is required";
+    }
+
+    if (!formData.pincode.trim()) {
+      newErrors.pincode = "Pincode is required";
+    } else if (!/^\d{6}$/.test(formData.pincode)) {
+      newErrors.pincode = "Enter valid 6-digit pincode";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validate()) {
+      toast.error("Please fix the errors in the form");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        mobile: formData.mobile.replace(/\D/g, ""),
+        password: formData.password,
+        role_id: signupType === "B2B" ? 3 : 2, // 3 = Vendor, 2 = User
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        pincode: formData.pincode.trim(),
+      };
+
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Account created successfully! 🎉");
+        setFormData({
+          name: "",
+          email: "",
+          mobile: "",
+          password: "",
+          confirmPassword: "",
+          address: "",
+          city: "",
+          pincode: "",
+        });
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+      } else {
+        toast.error(data.message || "Registration failed");
+      }
+    } catch (error) {
+      toast.error("Server error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
+      <Toaster position="top-right" />
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 rounded-xl overflow-hidden shadow-lg">
-
         {/* LEFT IMAGE */}
         <div
           className="hidden lg:flex relative bg-cover bg-center"
           style={{ backgroundImage: "url('/images/login.jpg')" }}
         >
-          <div className="absolute inset-0 bg-[#206f53]"></div>
-
+          <div className="absolute inset-0 bg-[#206f53] opacity-90"></div>
           <div className="relative z-10 flex flex-col justify-between h-full p-10 text-white">
             <img src="/images/citycare.png" alt="logo" className="w-36" />
-
             <div>
-              <h1 className="text-4xl font-bold mb-4">
-                You're new here!
-              </h1>
+              <h1 className="text-4xl font-bold mb-4">Join CityCare</h1>
               <p className="text-lg">
-                Sign in with your email and personal details to get started!
+                Create your account and get access to professional services at your doorstep.
               </p>
             </div>
           </div>
@@ -129,60 +168,170 @@ setTimeout(() => {
         {/* RIGHT FORM */}
         <div className="bg-gray-900 text-white flex items-center">
           <div className="w-full px-8 sm:px-12 py-10">
-
             <h3 className="text-2xl font-semibold text-center mb-6">
-              {signupType === "B2B"
-                ? "Business Sign Up"
-                : signupType === "B2C"
-                  ? "B2C Sign Up"
-                  : "Sign Up"}
+              {signupType === "B2B" ? "Business Sign Up" : "Create Account"}
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input name="name" placeholder="Name"
-                className="w-full p-3 bg-gray-800 rounded border border-gray-700 border-gray-700 focus:border-green-500 outline-none" />
+              {/* Full Name */}
+              <div>
+                <label className="text-sm text-gray-300">Full Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Enter your full name"
+                  className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                    errors.name ? "border-red-500" : "border-gray-700"
+                  } focus:border-green-500 outline-none`}
+                />
+                {errors.name && (
+                  <p className="text-red-400 text-xs mt-1">{errors.name}</p>
+                )}
+              </div>
 
-              <input name="mobile" placeholder="Mobile No."
-                className="w-full p-3 bg-gray-800 rounded border border-gray-700 border-gray-700 focus:border-green-500 outline-none" />
-              <select
-                name="role_id"
-                className="w-full p-3 bg-gray-800 rounded border border-gray-700 focus:border-green-500 outline-none"
+              {/* Email */}
+              <div>
+                <label className="text-sm text-gray-300">Email Address *</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="your.email@example.com"
+                  className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                    errors.email ? "border-red-500" : "border-gray-700"
+                  } focus:border-green-500 outline-none`}
+                />
+                {errors.email && (
+                  <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Mobile */}
+              <div>
+                <label className="text-sm text-gray-300">Mobile Number *</label>
+                <input
+                  type="tel"
+                  name="mobile"
+                  value={formData.mobile}
+                  onChange={handleChange}
+                  placeholder="10-digit mobile number"
+                  maxLength="10"
+                  className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                    errors.mobile ? "border-red-500" : "border-gray-700"
+                  } focus:border-green-500 outline-none`}
+                />
+                {errors.mobile && (
+                  <p className="text-red-400 text-xs mt-1">{errors.mobile}</p>
+                )}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="text-sm text-gray-300">Password *</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Minimum 6 characters"
+                  className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                    errors.password ? "border-red-500" : "border-gray-700"
+                  } focus:border-green-500 outline-none`}
+                />
+                {errors.password && (
+                  <p className="text-red-400 text-xs mt-1">{errors.password}</p>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="text-sm text-gray-300">Confirm Password *</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Re-enter your password"
+                  className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                    errors.confirmPassword ? "border-red-500" : "border-gray-700"
+                  } focus:border-green-500 outline-none`}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="text-sm text-gray-300">Address *</label>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Enter your complete address"
+                  rows="2"
+                  className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                    errors.address ? "border-red-500" : "border-gray-700"
+                  } focus:border-green-500 outline-none resize-none`}
+                />
+                {errors.address && (
+                  <p className="text-red-400 text-xs mt-1">{errors.address}</p>
+                )}
+              </div>
+
+              {/* City & Pincode */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-300">City *</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="City"
+                    className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                      errors.city ? "border-red-500" : "border-gray-700"
+                    } focus:border-green-500 outline-none`}
+                  />
+                  {errors.city && (
+                    <p className="text-red-400 text-xs mt-1">{errors.city}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm text-gray-300">Pincode *</label>
+                  <input
+                    type="text"
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    placeholder="6-digit pincode"
+                    maxLength="6"
+                    className={`w-full mt-1 p-3 rounded bg-gray-800 border ${
+                      errors.pincode ? "border-red-500" : "border-gray-700"
+                    } focus:border-green-500 outline-none`}
+                  />
+                  {errors.pincode && (
+                    <p className="text-red-400 text-xs mt-1">{errors.pincode}</p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#206f53] hover:bg-[#145A41] transition p-3 rounded font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">-- Select Role --</option>
-                <option value="2">User</option>
-                <option value="3">Vendor</option>
-              </select>
-
-              <select
-                name="district"
-                value={autoDistrict}
-                onChange={(e) => setAutoDistrict(e.target.value)}
-                className="w-full p-3 bg-gray-800 rounded border border-gray-700 focus:border-green-500 outline-none"
-              >
-                <option value="">-- Select District --</option>
-                {districts.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-
-
-              <input name="email" type="email" placeholder="Email"
-                className="w-full p-3 bg-gray-800 rounded border border-gray-700 border-gray-700 focus:border-green-500 outline-none" />
-
-              <input name="password" type="password" placeholder="Password"
-                className="w-full p-3 bg-gray-800 rounded border border-gray-700 border-gray-700 focus:border-green-500 outline-none" />
-
-              <button className="w-full bg-[#206f53] hover:bg-[#145A41] p-3 rounded cursor-pointer">
-                Create Account
+                {loading ? "Creating Account..." : "Create Account"}
               </button>
             </form>
 
             <p className="text-center text-sm text-gray-400 mt-6">
               Already have an account?
               <span
-                className="text-[#258764] ml-1 cursor-pointer"
+                className="text-[#258764] ml-1 cursor-pointer hover:underline"
                 onClick={() =>
                   navigate(
                     signupType === "B2B"
@@ -196,10 +345,8 @@ setTimeout(() => {
                 Login
               </span>
             </p>
-
           </div>
         </div>
-
       </div>
     </div>
   );

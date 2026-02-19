@@ -5,6 +5,9 @@ import Signup from "./pages/public/auth/SignUp";
 import Login from "./pages/public/auth/Login";
 import Profile from "./pages/public/profile/Profile";
 import ProfileServices from "./pages/public/profile/ProfileServices";
+import UserProfile from "./pages/public/profile/UserProfile";
+import VendorProfile from "./pages/public/profile/VendorProfile";
+import UserDashboard from "./pages/public/dashboard/UserDashboard";
 import ForgotPassword from "./pages/public/auth/ForgotPassword";
 import ResetPassword from "./pages/public/auth/ResetPassword";
 import ServiceDetailsPage from "./pages/public/service/ServiceDetailsPage";
@@ -45,7 +48,10 @@ function App() {
         <Route path="/signup/b2b" element={<Signup />} />
         
          <Route path="/profile" element={<Profile />} />
+         <Route path="/profile/user" element={<UserProfile />} />
+         <Route path="/profile/vendor" element={<VendorProfile />} />
          <Route path="/profile/services" element={<ProfileServices />} />
+         <Route path="/user-dashboard" element={<UserDashboard />} />
 
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />

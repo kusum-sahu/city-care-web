@@ -43,24 +43,14 @@ const MainHeader = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => navigate("/login")}
-              className="flex items-center gap-2 bg-[#023a20] text-white px-4 py-1 rounded-md text-sm"
-            >
-              <FaUser /> Login
-            </button>
-            <button
-              onClick={() => navigate("/login/b2c")}
-              className="flex items-center gap-2 bg-[#023a20] text-white px-4 py-1 rounded-md text-sm"
-            >
-              <FaUser /> B2C Login
-            </button>
-            <button
-              onClick={() => navigate("/login/b2b")}
-              className="flex items-center gap-2 bg-[#023a20] text-white px-4 py-1 rounded-md text-sm"
-            >
-              <FaUser /> B2B Login
-            </button>
+            {!localStorage.getItem("token") ? (
+              <button
+                onClick={() => navigate("/login")}
+                className="flex items-center gap-2 bg-[#023a20] text-white px-4 py-1 rounded-md text-sm hover:bg-[#145A41] transition"
+              >
+                <FaUser /> Login
+              </button>
+            ) : null}
             <div className="relative group">
               <div className="flex items-center gap-2 border border-[#023a20] rounded-lg px-3 py-1.5 cursor-pointer">
                 <FaUserCircle className="text-[#023a20] text-xl" />

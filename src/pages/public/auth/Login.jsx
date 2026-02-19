@@ -47,10 +47,13 @@ const handleLogin = async (e) => {
       // ✅ Redirect based on role
       const decoded = JSON.parse(atob(data.token.split(".")[1]));
 
+      // Role-based redirect after login
       if (decoded.role === "Admin") {
         navigate("/admin/dashboard");
       } else if (decoded.role === "Vendor") {
         navigate("/vendor/dashboard");
+      } else if (decoded.role === "User") {
+        navigate("/user-dashboard");
       } else {
         navigate("/");
       }
@@ -69,21 +72,7 @@ const handleLogin = async (e) => {
 //   }
 // }, []);
 
-useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) return;
-
-  const decoded = JSON.parse(atob(token.split(".")[1]));
-
-  if (decoded.role === "Admin") {
-    navigate("/admin/dashboard");
-  } else if (decoded.role === "Vendor") {
-    navigate("/vendor/dashboard");
-  } else {
-    navigate("/");
-  }
-
-}, []);
+// Removed auto-redirect - user should explicitly login
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
