@@ -62,6 +62,11 @@ async function createBooking({ userId, serviceId, bookingDate, startTime, coupon
       throw new ConflictError("Invalid booking date or time");
     }
 
+    // Prevent booking in the past
+    if (bookingStart < new Date()) {
+      throw new ConflictError("Cannot book past time");
+    }
+
     const bookingEnd = new Date(
       bookingStart.getTime() + (durationMinutes + bufferMinutes) * 60 * 1000
     );
