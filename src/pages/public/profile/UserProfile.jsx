@@ -15,6 +15,11 @@ const UserProfile = () => {
     fetchUserProfile();
   }, []);
 
+  /**
+   * Load current user's profile using existing /api/users endpoint.
+   * We decode the JWT to get the user id, then filter the users list.
+   * This avoids relying on a non-existent /api/users/profile route.
+   */
   const fetchUserProfile = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -22,15 +27,59 @@ const UserProfile = () => {
       return;
     }
 
+    let decoded;
     try {
-      const res = await axios.get("http://localhost:5000/api/users/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      decoded = JSON.parse(atob(token.split(".")[1]));
+    } catch (err) {
+      console.error("Token decode error:", err);
+      navigate("/login");
+      return;
+    }
 
-      if (res.data.success) {
-        setUser(res.data.data);
-        setEditData(res.data.data);
+    const userId = decoded.id;
+
+    try {
+      const res = await axios.get("http://localhost:5000/api/users");
+
+      if (res.data.success && Array.isArray(res.data.data)) {
+        const row = res.data.data.find((u) => u.id === userId);
+
+        if (row) {
+          // Map to profile shape; address/city/pincode may not yet exist in DB
+          const mapped = {
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            mobile: row.mobile,
+            address: row.address || "",
+            city: row.city || "",
+            pincode: row.pincode || "",
+          };
+          setUser(mapped);
+          setEditData(mapped);
+          return;
+        }
       }
+
+      // If no matching user found, keep UI but show empty profile instead of hard error
+      setUser({
+        id: userId,
+        name: "",
+        email: "",
+        mobile: "",
+        address: "",
+        city: "",
+        pincode: "",
+      });
+      setEditData({
+        id: userId,
+        name: "",
+        email: "",
+        mobile: "",
+        address: "",
+        city: "",
+        pincode: "",
+      });
     } catch (err) {
       console.error("Profile fetch error:", err);
       toast.error("Failed to load profile");

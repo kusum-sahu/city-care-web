@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaEdit, FaBuilding, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaStar, FaWallet, FaBank } from "react-icons/fa";
+import { FaEdit, FaBuilding, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaStar, FaWallet, FaCreditCard } from "react-icons/fa";
 
 const VendorProfile = () => {
   const navigate = useNavigate();
@@ -13,6 +13,14 @@ const VendorProfile = () => {
     fetchVendorProfile();
   }, []);
 
+  /**
+   * Load vendor profile using existing vendor endpoints.
+   * Since /api/vendors/me does not exist yet, we:
+   * - Decode JWT to get vendor_id
+   * - Use /api/vendors/profile-status for verification info
+   * - Use /api/vendors/earnings/:vendorId for basic earnings
+   * and keep the rest of the fields as \"Not provided\" placeholders.
+   */
   const fetchVendorProfile = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -20,14 +28,55 @@ const VendorProfile = () => {
       return;
     }
 
+    let decoded;
     try {
-      const res = await axios.get("http://localhost:5000/api/vendors/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      decoded = JSON.parse(atob(token.split(".")[1]));
+    } catch (err) {
+      console.error("Token decode error:", err);
+      navigate("/login/b2b");
+      return;
+    }
 
-      if (res.data.success) {
-        setVendor(res.data.data);
-      }
+    const vendorId = decoded.vendor_id;
+    if (!vendorId) {
+      navigate("/login/b2b");
+      return;
+    }
+
+    try {
+      const [statusRes, earningsRes] = await Promise.all([
+        axios.get("http://localhost:5000/api/vendors/profile-status", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`http://localhost:5000/api/vendors/earnings/${vendorId}`),
+      ]);
+
+      const statusData =
+        statusRes.data && statusRes.data.success ? statusRes.data.data : {};
+      const earningsData =
+        earningsRes.data && earningsRes.data.success ? earningsRes.data.data : {};
+
+      // Build a vendor object compatible with the UI, filling unknown fields with placeholders
+      setVendor({
+        business_name: "",
+        contact_person: "",
+        email: "",
+        mobile: "",
+        service_type_name: "",
+        experience_years: "",
+        service_area: "",
+        district: "",
+        bank_name: "",
+        account_number: "",
+        ifsc_code: "",
+        wallet_balance: earningsData.total_earnings || 0,
+        total_earnings: earningsData.total_earnings || 0,
+        commission_rate: "",
+        verification_status: statusData.verification_status || "pending",
+        profile_image: null,
+        rating: null,
+        total_reviews: 0,
+      });
     } catch (err) {
       console.error("Profile fetch error:", err);
       toast.error("Failed to load profile");
@@ -218,7 +267,7 @@ const VendorProfile = () => {
             {/* Bank Details */}
             <div className="mt-8 pt-8 border-t">
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <FaBank className="text-[#206f53]" />
+                <FaCreditCard className="text-[#206f53]" />
                 Banking Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
