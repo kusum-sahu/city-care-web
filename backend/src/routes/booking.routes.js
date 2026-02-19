@@ -4,7 +4,12 @@ const bookingController = require("../controllers/booking.controller");
 const verifyToken = require("../middlewares/auth.middleware");
 const allowRoles = require("../middlewares/role.middleware");
 
-router.post("/bookings/create", bookingController.createBooking);
+router.post(
+  "/bookings/create",
+  verifyToken,
+  bookingController.createBooking
+);
+
 router.post("/bookings/start", bookingController.startJob);
 router.post("/bookings/complete", bookingController.completeJob);
 router.post("/bookings/cancel", bookingController.cancelBooking);

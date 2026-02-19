@@ -1,3 +1,42 @@
+// const jwt = require("jsonwebtoken");
+
+// const verifyToken = (req, res, next) => {
+//   const authHeader = req.headers.authorization;
+  
+
+//   if (!authHeader) {
+//     return res.status(401).json({
+//       success: false,
+//       message: "No token provided",
+//     });
+//   }
+
+//   const token = authHeader.split(" ")[1];
+
+//   if (!token) {
+//     return res.status(401).json({
+//       success: false,
+//       message: "Token format invalid",
+//     });
+//   }
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+//     req.user = decoded;
+
+//     next(); // 🔥 VERY IMPORTANT
+//   } catch (error) {
+//     return res.status(401).json({
+//       success: false,
+//       message: "Invalid or expired token",
+//     });
+//   }
+// };
+
+// module.exports = verifyToken;
+
+
 const jwt = require("jsonwebtoken");
 
 const verifyToken = (req, res, next) => {
@@ -22,9 +61,10 @@ const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded;
+    console.log("DECODED TOKEN:", decoded); // 👈 DEBUG LINE
 
-    next(); // 🔥 VERY IMPORTANT
+    req.user = decoded;
+    next();
   } catch (error) {
     return res.status(401).json({
       success: false,
