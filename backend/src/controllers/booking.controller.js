@@ -1,102 +1,38 @@
 const db = require("../config/db");
+const bookingService = require("../services/booking.service");
+const { created } = require("../utils/response");
+const { ValidationError } = require("../utils/errors");
 
-//!  CREATE BOOKING + BROADCAST TO VENDORS
+//!  CREATE BOOKING
 
-exports.createBooking = (req, res) => {
-  const { service_id, booking_date, start_time, total_amount } = req.body;
-  const user_id = 1; // temporary
+exports.createBooking = async (req, res, next) => {
+  try {
+    const { service_id, booking_date, start_time, coupon_code } = req.body;
+    const userId = req.user?.id;
 
-  if (!service_id || !booking_date || !start_time || !total_amount) {
-    return res.status(400).json({ message: "Missing required fields" });
-  }
-
-  const serviceSql = `
-    SELECT duration_minutes
-    FROM services
-    WHERE id = ?
-  `;
-
-  db.query(serviceSql, [service_id], (err, serviceResult) => {
-    if (err || serviceResult.length === 0) {
-      return res.status(404).json({ message: "Service not found" });
+    // Validate required fields
+    if (!userId) {
+      throw new ValidationError("User authentication required");
+    }
+    if (!service_id || !booking_date || !start_time) {
+      throw new ValidationError("Missing required fields: service_id, booking_date, start_time");
     }
 
-    const duration = serviceResult[0].duration_minutes || 60;
+    // Call service
+    const booking = await bookingService.createBooking({
+      userId,
+      serviceId: service_id,
+      bookingDate: booking_date,
+      startTime: start_time,
+      couponCode: coupon_code,
+    });
 
-    const bookingStart = new Date(`${booking_date}T${start_time}`);
-    const bookingEnd = new Date(bookingStart.getTime() + duration * 60000);
-
-    /* 🔥 INSERT BOOKING */
-
-    const insertSql = `
-      INSERT INTO bookings
-      (user_id, service_id, vendor_id,
-       booking_start, booking_end,
-       total_amount, payment_status,
-       booking_status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    `;
-
-    db.query(
-      insertSql,
-      [
-        user_id,
-        service_id,
-        null,
-        bookingStart,
-        bookingEnd,
-        total_amount,
-        "pending",
-        "searching",
-      ],
-      (err, result) => {
-        if (err) {
-          return res.status(500).json({ message: "Booking failed" });
-        }
-
-        const bookingId = result.insertId;
-
-        /* 🔥 BROADCAST TO ELIGIBLE VENDORS */
-
-        const vendorSql = `
-          SELECT v.id
-          FROM vendors v
-          JOIN vendor_services vs ON vs.vendor_id = v.id
-          WHERE vs.service_id = ?
-          AND v.is_online = 1
-          ORDER BY v.rating DESC
-          LIMIT 5
-        `;
-
-        db.query(vendorSql, [service_id], (err, vendors) => {
-          if (err) {
-            return res.status(500).json({ message: "Vendor search failed" });
-          }
-
-          if (vendors.length === 0) {
-            return res.json({
-              success: false,
-              message: "No vendors available",
-            });
-          }
-
-          vendors.forEach((vendor) => {
-            db.query(
-              `INSERT INTO booking_requests (booking_id, vendor_id)
-               VALUES (?, ?)`,
-              [bookingId, vendor.id],
-            );
-          });
-
-          res.json({
-            success: true,
-            message: "Booking request sent to vendors",
-            booking_id: bookingId,
-          });
-        });
-      },
-    );
-  });
+    // Return success response
+    return created(res, booking, "Booking created successfully");
+  } catch (err) {
+    // Let error middleware handle it
+    next(err);
+  }
 };
 
 //!  GET VENDOR BOOKINGS (FIXED TOKEN ISSUE)
